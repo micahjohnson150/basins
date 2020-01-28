@@ -1,0 +1,17 @@
+*.shp
+*.cpx
+*.shx
+*.img
+*.ovr
+*.csv
+*.dbx
+*.png
+*.qgs
+*~
+*.pgw
+*.zip
+*.qml
+*.xml
+**/dem/**
+**/delineation/**
+**/basin_setup/**

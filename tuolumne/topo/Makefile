@@ -67,26 +67,21 @@ download_dem:
 	done <$(DEM_SOURCE)
 
 MOSAIC:=./dem/mosaic.img
-FULL_DEM:=./dem/full_dem_$(EPSG).tif
 
 dem_process:
 	# Unzip all the dems
 	unzip -u -o './dem/*.zip' -d ./dem
 	# Merge all images to a single image
 	gdal_merge.py -o $(MOSAIC) dem/*.img
-	# Reproject the image and overwrite
+	# Reproject and crop the image and overwrite
 	gdalwarp -overwrite \
 					 -t_srs EPSG:$(EPSG) \
 					 -tr $(DELINEATE_RESOLUTION) $(DELINEATE_RESOLUTION) \
+					 -te $(MAX_EXTENT)
 					 -r bilinear \
 					 $(MOSAIC) \
-					 $(FULL_DEM)
-	# Cut the dem to avoid lengthy processing
-	gdal_translate -projwin $(MAX_EXTENT) \
-								 -of GTiff \
-								 -r bilinear \
-								 $(FULL_DEM) \
-								 $(DEM_IMG)
+					 $(DEM_IMG)
+
 	# Clean up some processing images
 	rm $(MOSAIC)
 
@@ -109,7 +104,7 @@ cherry_eleanor_clavey_north_fork:
 	# Delineate with the rerun
 	delineate -p $(POUR_POINTS) \
 						-d $(DEM_IMG) \
-						-t $(CHERRY_THRESH) \
+						-t $(MIN_THRESH) $(CHERRY_THRESH) \
 						-n $(NTHREADS) \
 						-strm \
 						--rerun

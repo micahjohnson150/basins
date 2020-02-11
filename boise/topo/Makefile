@@ -45,6 +45,7 @@ init:
 						-t $(DELINEATE_THRESHOLD) \
 						-n $(NTHREADS) \
 						-strm
+	make south_fork
 	make topo
 	make qgis
 	make gis_package
@@ -78,6 +79,29 @@ dem_process:
 	# Clean up some processing images
 	rm $(MOSAIC)
 
+south_fork:
+	# Merge the subbasins together
+	ogrmerge.py -single -field_strategy FirstLayer -overwrite_ds \
+	-o ./delineation/south_fork_subbasin_mask.shp \
+			./delineation/mores_creek_subbasin.shp \
+			./delineation/twin_springs_subbasin.shp \
+			./delineation/featherville_subbasin.shp
+	# Dissolve the internal boundaries of the all the subbasins
+	ogr2ogr ./delineation/south_fork_subbasin_mask_full.shp \
+					./delineation/south_fork_subbasin_mask.shp \
+					-dialect sqlite -sql "SELECT ST_Union(geometry), * FROM south_fork_subbasin_mask"
+	# Subtract mask from the outline call it the south fork
+	ogr2ogr -f "ESRI Shapefile" \
+	./delineation/south_fork_subbasin.shp \
+	./delineation/basin_outline.shp \
+	-dialect sqlite -sql "select ST_Difference(basin_outline.geometry, \
+	south_fork_subbasin_mask_full.geometry) from basin_outline, \
+	'./delineation/south_fork_subbasin_mask_full.shp'.south_fork_subbasin_mask_full \
+	south_fork_subbasin_mask_full"
+	# Clean up
+	rm ./delineation/*_full.*
+	rm ./delineation/*_subbasin_mask.*
+
 delineate:
 	# Delineate the basin
 	delineate -p  $(POUR_POINTS) \
@@ -86,6 +110,7 @@ delineate:
 						-n $(NTHREADS) \
 						-strm \
 						--rerun
+	make south_fork
 
 topo:
 

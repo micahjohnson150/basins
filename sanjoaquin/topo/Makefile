@@ -141,5 +141,9 @@ qgis:
 										-v veg_type dem \
 										--epsg $(EPSG)
 
+geoserver:
+	cd delineation && \
+	guds -f *_subbasin.shp -b sanjoaquin -c ~/geoserver.json -t shapefile
+
 clean_all:
 	rm -rf dem basin_setup delineation

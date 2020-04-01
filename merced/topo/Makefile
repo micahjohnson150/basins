@@ -6,9 +6,12 @@ EPSG := 32611
 
 # LEFT BOTTOM, RIGHT TOP
 MAX_EXTENT := 204725 4147175 301425 4198425
+
 DELINEATE_THRESHOLD := 3000000 6700000
 DELINEATE_RESOLUTION := 10
-NTHREADS := 2
+NTHREADS := 3
+
+BASIN_EXTENT := 204825 4147275 301325 4198325
 
 # Path in the docker to the veg data
 VEG_DATA := /Downloads/US_140EVT_20180618/
@@ -98,6 +101,7 @@ delineate:
 						-n $(NTHREADS) \
 						-strm \
 						--rerun
+	make upper_watersheds
 
 upper_watersheds:
 	# Isolate the larger west basin
@@ -121,8 +125,8 @@ topo:
 							-bn $(BASIN_NAME) \
 							-sb delineation/*_subbasin.shp \
 							-dm $(DEM_IMG) \
-							-d /Downloads
-							# --extent $(BASIN_EXTENT)
+							-d /Downloads \
+							--extent $(BASIN_EXTENT)
 
 gis_package:
 	# Build a GIS package for bundle zip files
@@ -168,6 +172,10 @@ qgis:
 										-n basin_setup/topo.nc \
 										-v veg_type dem \
 										--epsg $(EPSG)
+
+geoserver:
+	cd delineation && \
+	guds -f *_subbasin.shp -b tuolumne -c ~/geoserver.json -t shapefile
 
 clean_all:
 	rm -rf dem basin_setup delineation setup.qgs $(NAME)_veg_type.tif

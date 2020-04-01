@@ -132,5 +132,10 @@ qgis:
 																			./delineation/streamflow/thresh_$(MIN_THRESH)/net_thresh_*.shp \
 																			-n basin_setup/topo.nc \
 																			-v veg_type dem
+
+geoserver:
+	cd delineation && \
+	guds -f *_subbasin.shp -b kings -c ~/geoserver.json -t shapefile
+
 clean_all:
 	rm -rf dem basin_setup delineation

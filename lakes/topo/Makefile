@@ -1,16 +1,22 @@
 ############################# INPUTS ###########################################
 DEM_SOURCE := dem_sources.txt
-BASIN_NAME := lakes basin
+BASIN_NAME := Lakes Basin
 POUR_POINTS := pour_points.bna
 EPSG := 32611
 
-MAX_EXTENT := 318520.405027 4167937.07547 329767.728206 4157522.88734
+# LEFT BOTTOM, RIGHT TOP
+MAX_EXTENT := 318520.405027 4157522.88734 329767.728206 4167937.07547
 DELINEATE_THRESHOLD := 10000 100000
 DELINEATE_RESOLUTION := 10
 NTHREADS := 2
-################################################################################
+
 # Path in the docker to the veg data
 VEG_DATA := /Downloads/US_140EVT_20180618/
+
+
+# LEFT BOTTOM RIGHT TOP
+# BASIN_EXTENT := 283967.6875 4050545 381092 4120020
+################################################################################
 
 # Build the dem file name
 DEM_IMG := ./dem/$$(python3.6 -c "print('{}_dem_EPSG{}.tif'.format('$(BASIN_NAME)'.lower(),'$(EPSG)').replace(' ','_'))")
@@ -21,7 +27,12 @@ ZIP:=$$(python3.6 -c "print('{}_shapefile_EPSG{}.zip'.format('$(BASIN_NAME)'.low
 # Rebuild the BASIN_NAME to look pretty
 BASIN_NAME:=$$(python3.6 -c "print('{}'.format('$(BASIN_NAME)'.title()).replace('_',' '))")
 
+# Assume the lowest threshold is the first for streams in the GIS file
 MIN_THRESH:=$$(python3.6 -c "print('{}'.format('$(DELINEATE_THRESHOLD)'.split(' ')[0]))")
+
+# Location of the veg data for GIS images
+VEG_MOSAIC := $(VEG_DATA)/Grid/us_140evt/dblbnd.adf
+
 
 all:
 	make delineate
@@ -43,7 +54,7 @@ init:
 	make qgis
 	make gis_package
 
-# Downlaod the dems in the source file
+# Download the dems in the source file
 download_dem:
 	# Make a directory and download data to it from the National Elevation Dataset
 	mkdir -p dem
@@ -54,7 +65,7 @@ download_dem:
 	done <$(DEM_SOURCE)
 
 MOSAIC:=./dem/mosaic.img
-FULL_DEM:=./dem/full_dem_$(EPSG).tif
+FULL_DEM:=./dem/full_dem_epsg_$(EPSG).tif \
 
 dem_process:
 	# Unzip all the dems
@@ -68,12 +79,13 @@ dem_process:
 					 -r bilinear \
 					 $(MOSAIC) \
 					 $(FULL_DEM)
-	# Cut the dem to avoid lengthy processing
-	gdal_translate -projwin $(MAX_EXTENT) \
-								 -of GTiff \
-								 -r bilinear \
-								 $(FULL_DEM) \
-								 $(DEM_IMG)
+	# Crop the image to the final extent
+	gdalwarp -overwrite \
+					 -tr $(DELINEATE_RESOLUTION) $(DELINEATE_RESOLUTION) \
+					 -te $(MAX_EXTENT) \
+					 -r bilinear \
+					 $(FULL_DEM) \
+					 $(DEM_IMG)
 	# Clean up some processing images
 	rm $(MOSAIC)
 
@@ -94,6 +106,7 @@ topo:
 							-sb delineation/*_subbasin.shp \
 							-dm $(DEM_IMG) \
 							-d /Downloads
+							# --extent $(BASIN_EXTENT)
 
 gis_package:
 	# Build a GIS package for bundle zip files
@@ -139,5 +152,6 @@ qgis:
 										-n basin_setup/topo.nc \
 										-v veg_type dem \
 										--epsg $(EPSG)
+
 clean_all:
-	rm -rf dem basin_setup delineation
+	rm -rf dem basin_setup delineation setup.qgs $(NAME)_veg_type.tif

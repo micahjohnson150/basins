@@ -12,7 +12,7 @@ import argparse
 
 
 """
-Every basin in my basin folder which is of similar structure (<basin>/model_setup/Makefile)
+Every basin in my basin folder which is of similar structure (<basin>/topo/Makefile)
 
 This script will go through all the basin topos and check the extents and
 projections compared to that in the basin_ops repo.
@@ -69,111 +69,119 @@ if __name__ == "__main__":
 
     for r in ops_paths:
         basin_name = path_split(r)[-2]
+        if basin_name == 'brb':
+            dev_basin_name = 'boise'
+        else:
+            dev_basin_name = basin_name
+
         ops_f  = osjoin(r,"topo.nc")
-        dev_f = osjoin(dev_dir,basin_name, "model_setup", "basin_setup", "topo.nc")
-        ops = Dataset(ops_f)
-        dev = Dataset(dev_f)
-        out.msg("Checking extents of {}...".format(basin_name))
+        dev_f = osjoin(dev_dir, dev_basin_name, "topo", "basin_setup", "topo.nc")
+        if not isfile(dev_f):
+            out.warn("Unable to compare ops {} topo since the development version doesn't exist".format(basin_name))
+        else:
+            ops = Dataset(ops_f)
+            dev = Dataset(dev_f)
+            out.msg("Checking extents of {}...".format(basin_name))
 
-        warnings = []
-        dimensional_issue = False
+            warnings = []
+            dimensional_issue = False
 
-        for v in ["x", "y"]:
+            for v in ["x", "y"]:
 
-            # Check extents
-            for op in ["min", "max"]:
+                # Check extents
+                for op in ["min", "max"]:
 
-                # Check the coordinates
-                mo = getattr(ops.variables[v][:], op)()
-                md = getattr(dev.variables[v][:], op)()
+                    # Check the coordinates
+                    mo = getattr(ops.variables[v][:], op)()
+                    md = getattr(dev.variables[v][:], op)()
 
-                if mo != md:
-                    report = ("{0} in {1} direction is not the same."
-                            "".format(op.title(), v.title()))
-                    diff = "{:0.4f}".format(md-mo)
-                    warnings.append(msg.format(report, diff))
-
-            # Check number of cells
-            dn = dev.variables[v].shape[0]
-            on = ops.variables[v].shape[0]
-            diff = dn - on
-
-            if diff != 0:
-                report = "n{} is not the same.".format(v)
-                warnings.append(msg.format(report, diff))
-                dimensional_issue = True
-
-            # Check resolution
-            res_diff = (dev.variables[v][0] - dev.variables[v][1]) - \
-                (ops.variables[v][0] - ops.variables[v][1])
-
-            if res_diff != 0:
-                report = "Cell size is not the same."
-                warnings.append(msg.format(report, res_diff))
-
-        # Check for mismatching variables
-        total_vars = list(ops.variables.keys()) + list(dev.variables.keys())
-        missing_in_ops = [v for v in dev.variables.keys() if v not in ops.variables.keys()]
-        missing_in_dev = [v for v in ops.variables.keys() if v not in dev.variables.keys()]
-
-        # Grab all missing to avoid key errors
-        missing_in_either = missing_in_dev + missing_in_ops
-
-        # Report missing issues
-        if len(missing_in_ops) != 0:
-            report = "Ops topo does not contain Dev variable(s)"
-            diff = ", ".join(missing_in_ops)
-            warnings.append(msg.format(report, diff))
-
-        if len(missing_in_dev) != 0:
-            report = "Dev topo does not contain Ops variable(s)."
-            diff = ", ".join(missing_in_dev)
-            warnings.append(msg.format(report, diff))
-
-        # Check file size/ datatypes (aka datatypes)
-        s = getsize(dev_f) - getsize(ops_f)
-        s_p = s/getsize(ops_f)
-
-        if s != 0:
-            report = "Filesize is not the same."
-            diff = "{:0.4f}Mb ({:0.2f}%)".format(s/1000000, s_p * 100.0)
-            warnings.append(msg.format(report, diff))
-
-            for vz, data in ops.variables.items():
-                if vz != "projection" and vz not in missing_in_either:
-
-                    # Check data types
-                    ops_type = data[:].dtype
-                    dev_type = dev.variables[vz][:].dtype
-
-                    if ops_type != dev_type:
-                        report ="{} data type mismatch".format(vz)
-                        diff = "Dev type = {}, Ops type = {}".format(dev_type, ops_type)
+                    if mo != md:
+                        report = ("{0} in {1} direction is not the same."
+                                "".format(op.title(), v.title()))
+                        diff = "{:0.4f}".format(md-mo)
                         warnings.append(msg.format(report, diff))
 
-                    # Check data differences on same sized domains
-                    if vz not in ['x','y'] and not dimensional_issue:
-                        diff = (dev.variables[vz][:] - ops.variables[vz][:]).mean()
+                # Check number of cells
+                dn = dev.variables[v].shape[0]
+                on = ops.variables[v].shape[0]
+                diff = dn - on
 
-                        if diff != 0:
-                            report = "{} not the same.".format(vz)
-                            diff = "{:0.5f} (mean)".format(diff)
+                if diff != 0:
+                    report = "n{} is not the same.".format(v)
+                    warnings.append(msg.format(report, diff))
+                    dimensional_issue = True
+
+                # Check resolution
+                res_diff = (dev.variables[v][0] - dev.variables[v][1]) - \
+                    (ops.variables[v][0] - ops.variables[v][1])
+
+                if res_diff != 0:
+                    report = "Cell size is not the same."
+                    warnings.append(msg.format(report, res_diff))
+
+            # Check for mismatching variables
+            total_vars = list(ops.variables.keys()) + list(dev.variables.keys())
+            missing_in_ops = [v for v in dev.variables.keys() if v not in ops.variables.keys()]
+            missing_in_dev = [v for v in ops.variables.keys() if v not in dev.variables.keys()]
+
+            # Grab all missing to avoid key errors
+            missing_in_either = missing_in_dev + missing_in_ops
+
+            # Report missing issues
+            if len(missing_in_ops) != 0:
+                report = "Ops topo does not contain Dev variable(s)"
+                diff = ", ".join(missing_in_ops)
+                warnings.append(msg.format(report, diff))
+
+            if len(missing_in_dev) != 0:
+                report = "Dev topo does not contain Ops variable(s)."
+                diff = ", ".join(missing_in_dev)
+                warnings.append(msg.format(report, diff))
+
+            # Check file size/ datatypes (aka datatypes)
+            s = getsize(dev_f) - getsize(ops_f)
+            s_p = s/getsize(ops_f)
+
+            if s != 0:
+                report = "Filesize is not the same."
+                diff = "{:0.4f}Mb ({:0.2f}%)".format(s/1000000, s_p * 100.0)
+                warnings.append(msg.format(report, diff))
+
+                for vz, data in ops.variables.items():
+                    if vz != "projection" and vz not in missing_in_either:
+
+                        # Check data types
+                        ops_type = data[:].dtype
+                        dev_type = dev.variables[vz][:].dtype
+
+                        if ops_type != dev_type:
+                            report ="{} data type mismatch".format(vz)
+                            diff = "Dev type = {}, Ops type = {}".format(dev_type, ops_type)
                             warnings.append(msg.format(report, diff))
 
+                        # Check data differences on same sized domains
+                        if vz not in ['x','y'] and not dimensional_issue:
+                            diff = (dev.variables[vz][:] - ops.variables[vz][:]).mean()
 
-        if len(warnings) != 0:
-            out.warn("{} differences found in {} topo.".format(len(warnings), basin_name))
-            print(hdr)
-            print("=" * len(hdr))
-            for w in warnings:
-                print(w)
-            print("")
-        else:
-            out.respond("No differences found!")
+                            if diff != 0:
+                                report = "{} not the same.".format(vz)
+                                diff = "{:0.5f} (mean)".format(diff)
+                                warnings.append(msg.format(report, diff))
 
-        ops.close()
-        dev.close()
-        #input("press enter to continue")
+
+            if len(warnings) != 0:
+                out.warn("{} differences found in {} topo.".format(len(warnings), basin_name))
+                print(hdr)
+                print("=" * len(hdr))
+                for w in warnings:
+                    print(w)
+                print("")
+            else:
+                out.respond("No differences found!")
+
+            ops.close()
+            dev.close()
+            #input("press enter to continue")
 
     msg = "Checked {} basins".format(len(ops_paths))
 

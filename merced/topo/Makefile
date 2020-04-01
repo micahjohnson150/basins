@@ -111,8 +111,8 @@ upper_watersheds:
 						-strm \
 						--rerun
 
-  # Move the larger basin back in
- 	mv west_subbasin.* ./delineation
+	# Move the larger basin back in
+	mv west_subbasin.* ./delineation
 
 topo:
 

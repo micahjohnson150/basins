@@ -1,19 +1,14 @@
 ############################# INPUTS ###########################################
 DEM_SOURCE := dem_sources.txt
-BASIN_NAME := san joaquin river basin
+BASIN_NAME := lakes basin
 POUR_POINTS := pour_points.bna
 EPSG := 32611
 
-# LEFT BOTTOM, RIGHT TOP
-MAX_EXTENT := 256525 4096525 353425 4179675
-DELINEATE_THRESHOLD := 1000000 9500000
+MAX_EXTENT := 318520.405027 4167937.07547 329767.728206 4157522.88734
+DELINEATE_THRESHOLD := 10000 100000
 DELINEATE_RESOLUTION := 10
 NTHREADS := 2
-
-# LEFT BOTTOM RIGHT TOP
-BASIN_EXTENT := 256625 4096625 353325 4179575
 ################################################################################
-
 # Path in the docker to the veg data
 VEG_DATA := /Downloads/US_140EVT_20180618/
 
@@ -25,6 +20,7 @@ ZIP:=$$(python3.6 -c "print('{}_shapefile_EPSG{}.zip'.format('$(BASIN_NAME)'.low
 
 # Rebuild the BASIN_NAME to look pretty
 BASIN_NAME:=$$(python3.6 -c "print('{}'.format('$(BASIN_NAME)'.title()).replace('_',' '))")
+
 MIN_THRESH:=$$(python3.6 -c "print('{}'.format('$(DELINEATE_THRESHOLD)'.split(' ')[0]))")
 
 all:
@@ -47,7 +43,7 @@ init:
 	make qgis
 	make gis_package
 
-# Download the dems in the source file
+# Downlaod the dems in the source file
 download_dem:
 	# Make a directory and download data to it from the National Elevation Dataset
 	mkdir -p dem
@@ -69,11 +65,15 @@ dem_process:
 	gdalwarp -overwrite \
 					 -t_srs EPSG:$(EPSG) \
 					 -tr $(DELINEATE_RESOLUTION) $(DELINEATE_RESOLUTION) \
-					 -te $(MAX_EXTENT) \
 					 -r bilinear \
 					 $(MOSAIC) \
-					 $(DEM_IMG)
-
+					 $(FULL_DEM)
+	# Cut the dem to avoid lengthy processing
+	gdal_translate -projwin $(MAX_EXTENT) \
+								 -of GTiff \
+								 -r bilinear \
+								 $(FULL_DEM) \
+								 $(DEM_IMG)
 	# Clean up some processing images
 	rm $(MOSAIC)
 
@@ -93,7 +93,6 @@ topo:
 							-bn $(BASIN_NAME) \
 							-sb delineation/*_subbasin.shp \
 							-dm $(DEM_IMG) \
-							--extent $(BASIN_EXTENT) \
 							-d /Downloads
 
 gis_package:
@@ -140,6 +139,5 @@ qgis:
 										-n basin_setup/topo.nc \
 										-v veg_type dem \
 										--epsg $(EPSG)
-
 clean_all:
 	rm -rf dem basin_setup delineation

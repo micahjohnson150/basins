@@ -15,6 +15,8 @@ NTHREADS := 2
 # LEFT BOTTOM RIGHT TOP
 BASIN_EXTENT := 283967.6875 4050545 381092 4120020
 ################################################################################
+# Path in the docker to the veg data
+VEG_DATA := /Downloads/US_140EVT_20180618/
 
 # Build the dem file name
 DEM_IMG := ./dem/$$(python3.6 -c "print('{}_dem_EPSG{}.tif'.format('$(BASIN_NAME)'.lower(),'$(EPSG)').replace(' ','_'))")

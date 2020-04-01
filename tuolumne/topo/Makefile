@@ -15,6 +15,9 @@ NTHREADS := 2
 # Asymmetric padding in Basin Setup
 APD := 0 0 0 220
 
+# Path in the docker to the veg data
+VEG_DATA := /Downloads/US_140EVT_20180618/
+
 # LEFT BOTTOM RIGHT TOP
 # BASIN_EXTENT := 283967.6875 4050545 381092 4120020
 ################################################################################
@@ -151,28 +154,44 @@ gis_package:
 	# Build a GIS package for bundle zip files
 	zip $(ZIP) ./delineation/*basin_outline.* ./delineation/*_subbasin.*
 
+	VEG_LAYER:=veg_type.tif
+
+veg_process:
+	# Crop veg data for GIS
+	gdalwarp  -t_srs EPSG:$(EPSG) \
+	 				  -overwrite \
+						-te $(MAX_EXTENT) \
+						-tr $(DELINEATE_RESOLUTION) $(DELINEATE_RESOLUTION) \
+						$(VEG_MOSAIC) \
+						$(VEG_LAYER)
+
 qgis:
 	# Make a QGIS basin project
-	# Make the dem colormap and hillshade
+	# Make the hillshade
 	gdaldem hillshade $(DEM_IMG) ./dem/hillshade.tif
 	mkdir -p ./colormaps
 
 	# Make the DEM colormap
-	python3.6 ./scripts/make_dem_colormap.py $(DEM_IMG)
+	make_dem_colormap $(DEM_IMG)
 
 	# Make the Vegetation colormap
-	python3.6 ./scripts/make_veg_type_colormap.py
+	make_veg_type_colormap $(VEG_DATA)
 
-	# move the hillshade colormap over
-	cp scripts/qgis_templates/hillshade.xml colormaps/hillshade.qml
+	# Move them to the colormaps directory
+	mv *.qml colormaps/.
+
+	# Make the veg data
+	make veg_process
 
 	# Make the final project file
-	python3.6 scripts/make_qgis_proj.py -t $(DEM_IMG) \
-																			./dem/hillshade.tif \
-																			-s $(POUR_POINTS) \
-																			./delineation/*basin*.shp \
-																			./delineation/streamflow/thresh_$(CHERRY_THRESH)/net_thresh_*.shp \
-																			-n basin_setup/topo.nc \
-																			-v veg_type dem
+	make_qgis_proj -t $(VEG_LAYER) \
+										$(DEM_IMG) \
+										./dem/hillshade.tif \
+										-s $(POUR_POINTS) \
+										./delineation/*basin*.shp \
+										./delineation/streamflow/thresh_$(MIN_THRESH)/net_thresh_*.shp \
+										-n basin_setup/topo.nc \
+										-v veg_type dem \
+										--epsg $(EPSG)
 clean_all:
 	rm -rf dem basin_setup delineation

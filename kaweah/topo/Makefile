@@ -6,9 +6,9 @@ EPSG := 32611
 
 # LEFT BOTTOM, RIGHT TOP
 MAX_EXTENT := 319525 4016900 363545 4066625
-DELINEATE_THRESHOLD := 2500000
+DELINEATE_THRESHOLD := 250000 2500000
 DELINEATE_RESOLUTION := 10
-NTHREADS := 2
+NTHREADS := 3
 
 BASIN_EXTENT := 319625 4017075 363445 4066525
 
@@ -31,6 +31,7 @@ BASIN_NAME:=$$(python3.6 -c "print('{}'.format('$(BASIN_NAME)'.title()).replace(
 
 # Assume the lowest threshold is the first for streams in the GIS file
 MIN_THRESH:=$$(python3.6 -c "print('{}'.format('$(DELINEATE_THRESHOLD)'.split(' ')[0]))")
+MAX_THRESH:=$$(python3.6 -c "print('{}'.format('$(DELINEATE_THRESHOLD)'.split(' ')[-1]))")
 
 # Location of the veg data for GIS images
 VEG_MOSAIC := $(VEG_DATA)/Grid/us_140evt/dblbnd.adf
@@ -162,6 +163,10 @@ qgis:
 										-n basin_setup/topo.nc \
 										-v veg_type dem \
 										--epsg $(EPSG)
+
+geoserver:
+	cd delineation && \
+	guds -f *_subbasin.shp -b kaweah -c ~/geoserver.json -t shapefile
 
 clean_all:
 	rm -rf dem basin_setup delineation setup.qgs $(NAME)_veg_type.tif

@@ -1,4 +1,3 @@
-*.shp
 *.cpx
 *.shx
 *.img
@@ -12,6 +11,9 @@
 *.zip
 *.qml
 *.xml
+*.tif
+*.img
 **/dem/**
 **/delineation/**
 **/basin_setup/**
+~                    

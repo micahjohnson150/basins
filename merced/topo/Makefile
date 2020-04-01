@@ -5,9 +5,9 @@ POUR_POINTS := pour_points.bna
 EPSG := 32611
 
 # LEFT BOTTOM, RIGHT TOP
-MAX_EXTENT := 204725 4147175 301425 4198425
+MAX_EXTENT := 204625 4147175 301425 4198425
 
-DELINEATE_THRESHOLD := 3000000 6700000
+DELINEATE_THRESHOLD := 3000000 6750000
 DELINEATE_RESOLUTION := 10
 NTHREADS := 3
 
@@ -100,7 +100,8 @@ delineate:
 						-t $(MAX_THRESH) \
 						-n $(NTHREADS) \
 						-strm \
-						--rerun
+						--rerun \
+
 	make upper_watersheds
 
 upper_watersheds:
@@ -175,7 +176,7 @@ qgis:
 
 geoserver:
 	cd delineation && \
-	guds -f *_subbasin.shp -b tuolumne -c ~/geoserver.json -t shapefile
+	guds -f *_subbasin.shp -b merced -c ~/geoserver.json -t shapefile
 
 clean_all:
 	rm -rf dem basin_setup delineation setup.qgs $(NAME)_veg_type.tif
